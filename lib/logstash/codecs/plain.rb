@@ -1,6 +1,6 @@
 # encoding: utf-8
 require "logstash/codecs/base"
-require "logstash/util/charset"
+require "logstash/codecs/plain_converter"
 
 # The "plain" codec is for plain text with no delimiting between events.
 #
@@ -27,7 +27,7 @@ class LogStash::Codecs::Plain < LogStash::Codecs::Base
   MESSAGE_FIELD = "message".freeze
 
   def register
-    @converter = LogStash::Util::Charset.new(@charset)
+    @converter = LogStash::Util::PlainConverter.new(@charset)
     @converter.logger = @logger
   end
 
@@ -36,7 +36,12 @@ class LogStash::Codecs::Plain < LogStash::Codecs::Base
   end
 
   def encode(event)
-    encoded = @format ? event.sprintf(@format) : event.to_s
+    if @converter.is_charset_binary
+      encoded = event.to_s
+      encoded.force_encoding(Encoding::BINARY)
+    else
+      encoded = @format ? event.sprintf(@format) : event.to_s
+    end
     @on_event.call(event, encoded)
   end
 end
